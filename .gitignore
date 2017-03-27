@@ -45,3 +45,13 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# actually useful stuff
+*~
+.*swp
+.ipynb_checkpoints
+__pycache__
+*.ipynb
+*.pkl
+*.xlsx
+*.csv
