@@ -187,6 +187,7 @@ class conditioned_seq2seq(object):
         ckpt = tf.train.get_checkpoint_state(self.ckpt_path)
         # verify it
         if ckpt and ckpt.model_checkpoint_path:
+            print('>> Restoring last checkpoint : ', ckpt.model_checkpoint_path)
             saver.restore(sess, ckpt.model_checkpoint_path)
 
         try:
@@ -199,9 +200,9 @@ class conditioned_seq2seq(object):
                                     )
                     mean_loss += l
                     sys.stdout.write('[{}/{}]\r'.format(i, n))
+                print('\n>> [{}] train loss at : {}'.format(j, mean_loss / n))
 
                 if j and j%eval_interval == 0:
-                    print('\n>> [{}] train loss at : {}'.format(j, mean_loss / n))
                     saver.save(sess, self.ckpt_path + self.model_name + '.ckpt', global_step=i)
                     #
                     # evaluate
