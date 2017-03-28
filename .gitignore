@@ -55,3 +55,8 @@ __pycache__
 *.pkl
 *.xlsx
 *.csv
+# new headache
+.idea
+# ignore checkpoint
+#  use -f to force add checkpoints
+ckpt/
