@@ -1,15 +1,13 @@
 import tensorflow as tf
-import numpy as np
-
-from datasets.friends import data
-from datasets.friends import data_utils
 
 import sys
 
 
 class conditioned_seq2seq(object):
+
     def __init__(self, state_size, vocab_size, num_layers,
                  ext_context_size,
+                 batch_size,
                  model_name='conditioned_seq2seq',
                  ckpt_path='ckpt/conditioned_seq2seq/'):
 
@@ -172,13 +170,29 @@ class conditioned_seq2seq(object):
             self.ys_ = ys_
             self.dec_inputs_length_ = dec_inputs_length_
             self.ext_context_ = ext_context_
-            #####
+            # and finally, attach session to self
+            init_op = tf.global_variables_initializer()
+            self._sess = tf.Session()
+            self._sess.run(init_op)
+
 
         ####
         # build graph
         __graph__()
 
-    def train(self, trainset, validset, n, epochs, valid_n, eval_interval=10):
+
+    def restore_last_checkpoint(self):
+        saver = tf.train.Saver()
+        self._sess.run(tf.global_variables_initializer())
+        # get last checkpoint
+        ckpt = tf.train.get_checkpoint_state(self.ckpt_path)
+        # verify it
+        if ckpt and ckpt.model_checkpoint_path:
+            print('>> Restoring last checkpoint : ', ckpt.model_checkpoint_path)
+            saver.restore(self._sess, ckpt.model_checkpoint_path)
+
+
+    def train(self, trainset, validset, n, epochs, valid_n, eval_interval=10, save=False):
 
         print('\n>> Training begins!\n')
 
@@ -199,21 +213,19 @@ class conditioned_seq2seq(object):
         ##
         # setup session
         saver = tf.train.Saver()
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
         # get last checkpoint
         ckpt = tf.train.get_checkpoint_state(self.ckpt_path)
         # verify it
         if ckpt and ckpt.model_checkpoint_path:
             print('>> Restoring last checkpoint : ', ckpt.model_checkpoint_path)
-            saver.restore(sess, ckpt.model_checkpoint_path)
+            saver.restore(self._sess, ckpt.model_checkpoint_path)
 
         try:
             # start training
             for j in range(epochs):
                 mean_loss = 0
                 for i in range(n):
-                    _, _, l = sess.run([self.train_op, self.train_op_r, self.loss],
+                    _, _, l = self._sess.run([self.train_op, self.train_op_r, self.loss],
                                     feed_dict=fetch_dict(trainset)
                                     )
                     mean_loss += l
@@ -221,41 +233,16 @@ class conditioned_seq2seq(object):
                 print('\n>> [{}] train loss at : {}'.format(j, mean_loss / n))
 
                 if j and j%eval_interval == 0:
-                    saver.save(sess, self.ckpt_path + self.model_name + '.ckpt', global_step=i)
+                    if save:
+                        saver.save(self._sess, self.ckpt_path + self.model_name + '.ckpt', global_step=i)
                     #
                     # evaluate
                     validloss = 0
                     for k in range(valid_n):
-                        validloss += sess.run([self.loss],
+                        validloss += self._sess.run([self.loss],
                                              feed_dict=fetch_dict(validset, keep_prob=1.)
                                              )[0]
-                    print('valid loss : {}'.format(validloss / 300))  # make this changeable
+                    print('valid loss : {}'.format(validloss / valid_n))
 
         except KeyboardInterrupt:
             print('\n>> Interrupted by user at iteration {}'.format(j))
-
-
-if __name__ == '__main__':
-    #
-    # gather data
-    data_, metadata = data.load_data(PATH='datasets/friends/')
-    # split into train/test/valid
-    train, test, valid = data_utils.split_dataset(data_)
-    # prepare train set generator
-    #  
-    batch_size = 256  # replace with cmd line args
-    trainset = data_utils.rand_batch_gen(train, batch_size=batch_size)
-    validset = data_utils.rand_batch_gen(valid, batch_size=batch_size)
-
-    ###
-    # infer vocab size
-    vocab_size = len(metadata['idx2w'])
-    ext_context_size = metadata['respect_size']
-    #
-    # create a model
-    model = conditioned_seq2seq(state_size=32, vocab_size=vocab_size,
-                                num_layers=2, ext_context_size=ext_context_size)
-    # train
-    model.train(trainset, validset, n=len(train['q'])//(batch_size*2),
-                valid_n=len(valid['q'])//(batch_size*2),
-                epochs=100000)
