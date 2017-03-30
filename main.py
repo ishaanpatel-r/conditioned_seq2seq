@@ -43,7 +43,7 @@ def parse_args():
     return args
 
 
-def train(data, metadata, args):
+def train(model_fn, data_, metadata, args):
     # split into train/test/valid
     train, test, valid = data_utils.split_dataset(data_)
     # prepare train set generator
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     model_fn = conditioned_seq2seq if args['conditioned'] else seq2seq
     # train
     if args['train']:
-        train(model_fn, data, metadata, args)
+        train(model_fn, data_, metadata, args)
     # interactive session
     elif args['interact']:
         isess = InteractiveSession(model_fn, metadata, args)
