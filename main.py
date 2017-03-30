@@ -5,6 +5,7 @@ from datasets.friends import data_utils
 
 import argparse
 from model import conditioned_seq2seq
+from vanilla import seq2seq
 
 
 '''
@@ -33,6 +34,11 @@ def parse_args():
                         help='enter the name of the log file')
     parser.add_argument('--save', required=False, action='store_false',
                         help='save checkpoints')
+    group1 = parser.add_mutually_exclusive_group(required=True)
+    group1.add_argument('--vanilla', action='store_true',
+                        help='Simple sequence to sequence model')
+    group1.add_argument('--conditioned', action='store_true',
+                        help='conditioned seq2seq model')
     args = vars(parser.parse_args())
     return args
 
@@ -52,9 +58,14 @@ def train(data, metadata, args):
     ext_context_size = metadata['respect_size']
     #
     # create a model
-    model = conditioned_seq2seq(state_size=32, vocab_size=vocab_size,
-                                num_layers=2, ext_context_size=ext_context_size,
-                                batch_size=batch_size)
+    if model_fn == conditioned_seq2seq:
+        model = model_fn(state_size=32, vocab_size=vocab_size,
+                                    num_layers=2, ext_context_size=ext_context_size,
+                                    batch_size=batch_size)
+    else:
+        model = model_fn(state_size=32, vocab_size=vocab_size,
+                                    num_layers=2,
+                                    batch_size=batch_size)
     # train
     model.train(trainset, validset, n=len(train['q'])//(batch_size*2),
                 valid_n=len(valid['q'])//(batch_size*2),
@@ -63,7 +74,7 @@ def train(data, metadata, args):
 
 class InteractiveSession():
 
-    def __init__(self, metadata, args):
+    def __init__(self, model_fn, metadata, args):
         # init interaction
         def init_interaction():
             # attach metadata to self
@@ -73,9 +84,15 @@ class InteractiveSession():
             ext_context_size = metadata['respect_size']
             #
             # create a model
-            self.model = conditioned_seq2seq(state_size=args['state_size'],
-                    vocab_size=vocab_size, num_layers=args['num_layers'],
-                    ext_context_size=ext_context_size, batch_size=1)
+            if model_fn == conditioned_seq2seq:
+                self.model = model_fn(state_size=args['state_size'],
+                        vocab_size=vocab_size, num_layers=args['num_layers'],
+                        ext_context_size=ext_context_size, batch_size=1)
+            else:
+                self.model = model_fn(state_size=args['state_size'],
+                        vocab_size=vocab_size, num_layers=args['num_layers'],
+                        batch_size=1)
+
             # restore last checkpoint (note_to_self :  i should stop writing redundant comments)
             self.model.restore_last_checkpoint()
         # call init
@@ -97,12 +114,14 @@ if __name__ == '__main__':
     #
     # gather data
     data_, metadata = data.load_data(PATH='datasets/friends/')
+    # get model type from args
+    model_fn = conditioned_seq2seq if args['conditioned'] else seq2seq
     # train
     if args['train']:
-        train(data, metadata, args)
+        train(model_fn, data, metadata, args)
     # interactive session
     elif args['interact']:
-        isess = InteractiveSession(metadata, args)
+        isess = InteractiveSession(model_fn, metadata, args)
         while True:
             try:
                 print(isess.respond(input('>> ')))
