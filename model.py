@@ -34,10 +34,6 @@ class conditioned_seq2seq(object):
             embs = tf.get_variable('emb', [vocab_size, state_size])
             enc_inputs = tf.nn.embedding_lookup(embs, xs_)
 
-            # embed ext_context
-            ext_ctxt_embs = tf.get_variable('ext_ctxt_emb', [ext_context_size, state_size])
-            ext_context = tf.nn.embedding_lookup(ext_ctxt_embs, ext_context_)
-
             # define lstm cell for encoder
             encoder_cell = tf.contrib.rnn.LSTMCell(state_size)
             # add dropout
@@ -56,6 +52,28 @@ class conditioned_seq2seq(object):
 
             # define encoder
             enc_op, enc_context = tf.nn.dynamic_rnn(cell=encoder_cell, dtype=tf.float32, inputs=enc_inputs)
+
+            # R value classifier
+            Vr = tf.get_variable('Vr', shape=[num_layers*state_size, ext_context_size], 
+                                initializer=tf.contrib.layers.xavier_initializer())
+            br = tf.get_variable('br', shape=[ext_context_size], 
+                                 initializer=tf.constant_initializer(0.))
+            def r_classifier():
+                enc_context_c = tf.concat([c for c,h in enc_context], axis=1)
+                r_logits = tf.matmul(enc_context_c, Vr) + br
+                self.r_preds = tf.argmax(tf.nn.softmax(r_logits), axis=1) # attach to self
+                r_losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=r_logits, labels=ext_context_)
+                self.r_loss = tf.reduce_mean(r_losses)
+                self.train_op_r = tf.train.AdagradOptimizer(learning_rate=0.1).minimize(self.r_loss)
+
+            # add r_classifier to graph
+            r_classifier()
+
+            # embed ext_context
+            ext_ctxt_embs = tf.get_variable('ext_ctxt_emb', [ext_context_size, state_size])
+            # get a slice from embedding matrix
+            ext_context = tf.nn.embedding_lookup(ext_ctxt_embs, self.r_preds)
+
 
             # output projection
             V = tf.get_variable('V', shape=[state_size, vocab_size],
@@ -195,7 +213,7 @@ class conditioned_seq2seq(object):
             for j in range(epochs):
                 mean_loss = 0
                 for i in range(n):
-                    _, l = sess.run([self.train_op, self.loss],
+                    _, _, l = sess.run([self.train_op, self.train_op_r, self.loss],
                                     feed_dict=fetch_dict(trainset)
                                     )
                     mean_loss += l
@@ -235,8 +253,8 @@ if __name__ == '__main__':
     ext_context_size = metadata['respect_size']
     #
     # create a model
-    model = conditioned_seq2seq(state_size=1024, vocab_size=vocab_size,
-                                num_layers=3, ext_context_size=ext_context_size)
+    model = conditioned_seq2seq(state_size=32, vocab_size=vocab_size,
+                                num_layers=2, ext_context_size=ext_context_size)
     # train
     model.train(trainset, validset, n=len(train['q'])//(batch_size*2),
                 valid_n=len(valid['q'])//(batch_size*2),
