@@ -41,8 +41,12 @@ class conditioned_seq2seq(object):
             # define lstm cell for encoder
             def lstm_cell():
                 return tf.contrib.rnn.DropoutWrapper(
-                    tf.contrib.rnn.LSTMCell(state_size, reuse=tf.get_variable_scope().reuse),
-                    output_keep_prob=keep_prob_)
+                   # for regular version
+                    tf.contrib.rnn.LSTMCell(state_size)
+                   # for bleeding edge tf version
+                   # tf.contrib.rnn.LSTMCell(state_size, reuse=tf.get_variable_scope().reuse),
+                   # output_keep_prob=keep_prob_
+                )
 
             # stack cells
             encoder_cell = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(num_layers)],
