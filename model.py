@@ -246,14 +246,14 @@ class conditioned_seq2seq(object):
 
                 if j and j%eval_interval == 0:
                     if save:
-                        saver.save(self._sess, self.ckpt_path + self.model_name + '.ckpt', global_step=i)
+                        saver.save(self._sess, self.ckpt_path + self.model_name + '.ckpt', global_step=j)
                     #
                     # evaluate
                     validloss = 0
                     for k in range(valid_n):
-                        validloss += self._sess.run([self.loss],
+                        validloss += self._sess.run(self.loss,
                                              feed_dict=fetch_dict(validset, keep_prob=1.)
-                                             )[0]
+                                             )
                     print('valid loss : {}'.format(validloss / valid_n))
 
         except KeyboardInterrupt:
