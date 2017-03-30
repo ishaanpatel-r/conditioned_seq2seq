@@ -58,3 +58,17 @@ def rand_batch_gen(d, batch_size):
 '''
 def decode(sequence, lookup, separator=' '): # 0 used for padding, is ignored
     return separator.join([ lookup[element] for element in sequence if element ])
+
+'''
+ encode method
+    inputs : array of indices, lookup(w2idx)
+
+'''
+def encode(sequence, lookup, separator=' '):
+    indices = []
+    for w in sequence.split(' '):
+        if w in lookup:
+            indices.append(lookup[w])
+        else:
+            indices.append(lookup['UNK'])
+    return np.array(indices).reshape([1,len(indices)])

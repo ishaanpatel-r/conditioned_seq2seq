@@ -152,7 +152,7 @@ class conditioned_seq2seq(object):
             logits = tf.matmul(dec_op_reshaped, V) + bo
             #
             # predictions
-            predictions = tf.nn.softmax(logits)
+            predictions = tf.argmax(tf.nn.softmax(logits), axis=1)
             #
             # optimization
             losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
@@ -190,6 +190,18 @@ class conditioned_seq2seq(object):
         if ckpt and ckpt.model_checkpoint_path:
             print('>> Restoring last checkpoint : ', ckpt.model_checkpoint_path)
             saver.restore(self._sess, ckpt.model_checkpoint_path)
+
+
+    def predict(self, query):
+        # query -> array of indices
+        #
+        # build feed dict
+        feed_dict = {
+                self.xs_ : query,
+                self.dec_inputs_length_ : [query.shape[-1]*2], # this bothers me!
+                self.keep_prob_ : 1.
+                }
+        return self._sess.run(self.predictions, feed_dict = feed_dict)
 
 
     def train(self, trainset, validset, n, epochs, valid_n, eval_interval=10, save=False):

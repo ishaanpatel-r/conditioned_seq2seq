@@ -84,11 +84,11 @@ class InteractiveSession():
     def respond(self, query):
         #
         # [1] encode query<str>
-        # [2] get predictions from model
-        # [3] take argmax
+        # [2] get predictions from model ([3] take argmax)
         # [4] decode response<array>
-
-        return ''
+        enc_query = data_utils.encode(query, self.metadata['w2idx'])
+        response = self.model.predict(enc_query)
+        return ':: ' + data_utils.decode(response, self.metadata['idx2w'])
 
 
 if __name__ == '__main__':
@@ -103,7 +103,12 @@ if __name__ == '__main__':
     # interactive session
     elif args['interact']:
         isess = InteractiveSession(metadata, args)
-        print('response : ', isess.respond('hello'))
+        while True:
+            try:
+                print(isess.respond(input('>> ')))
+            except KeyboardInterrupt:
+                break
+
 
 ''' 
     SKOL!
