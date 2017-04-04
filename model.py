@@ -210,7 +210,9 @@ class conditioned_seq2seq(object):
 
     def train(self, trainset, validset, n, epochs, valid_n, eval_interval=10, save=False):
 
-        print('\n>> Training begins!\n')
+        print('\n>> Training begins!')
+        if save:
+            print('[SAVE ENABLED]\n')
 
         def fetch_dict(datagen, keep_prob=0.5):
             qi, ai, ri = datagen.__next__()

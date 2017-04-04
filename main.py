@@ -32,7 +32,7 @@ def parse_args():
                         help='num iteration of training over train set')
     parser.add_argument('--log_file', required=False, type=str, default='log.txt',
                         help='enter the name of the log file')
-    parser.add_argument('--save', required=False, action='store_false',
+    parser.add_argument('--save', required=False, action='store_true',
                         help='save checkpoints')
     group1 = parser.add_mutually_exclusive_group(required=True)
     group1.add_argument('--vanilla', action='store_true',
@@ -59,17 +59,17 @@ def train(model_fn, data_, metadata, args):
     #
     # create a model
     if model_fn == conditioned_seq2seq:
-        model = model_fn(state_size=32, vocab_size=vocab_size,
-                                    num_layers=2, ext_context_size=ext_context_size,
+        model = model_fn(state_size=args['state_size'], vocab_size=vocab_size,
+                                    num_layers=['num_layers'], 
+                                    ext_context_size=ext_context_size,
                                     batch_size=batch_size)
+        # train
+        model.train(trainset, validset, n=len(train['q'])//(batch_size*2),
+                    valid_n=len(valid['q'])//(batch_size*2),
+                    epochs=100000, save=args['save'])
+
     else:
-        model = model_fn(state_size=32, vocab_size=vocab_size,
-                                    num_layers=2,
-                                    batch_size=batch_size)
-    # train
-    model.train(trainset, validset, n=len(train['q'])//(batch_size*2),
-                valid_n=len(valid['q'])//(batch_size*2),
-                epochs=100000, save=args['save'])
+        print('Not Implemented!')
 
 
 class InteractiveSession():
