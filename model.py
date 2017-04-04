@@ -42,11 +42,12 @@ class conditioned_seq2seq(object):
             def lstm_cell():
                 return tf.contrib.rnn.DropoutWrapper(
                    # for regular version
-                    tf.contrib.rnn.LSTMCell(state_size)
+                    tf.contrib.rnn.LSTMCell(state_size),
+                    output_keep_prob=keep_prob_
+                    )
                    # for bleeding edge tf version
                    # tf.contrib.rnn.LSTMCell(state_size, reuse=tf.get_variable_scope().reuse),
                    # output_keep_prob=keep_prob_
-                )
 
             # stack cells
             encoder_cell = tf.contrib.rnn.MultiRNNCell([lstm_cell() for _ in range(num_layers)],
@@ -168,6 +169,7 @@ class conditioned_seq2seq(object):
             self.loss = loss
             self.train_op = train_op
             self.predictions = predictions
+            self.perplexity = tf.exp(loss)
             self.ext_context_size = ext_context_size
             self.keep_prob_ = keep_prob_  # placeholders
             self.xs_ = xs_
@@ -214,6 +216,10 @@ class conditioned_seq2seq(object):
         if save:
             print('[SAVE ENABLED]\n')
 
+        # create log handle
+        log_handle = open('log/pp.log', 'w')
+
+
         def fetch_dict(datagen, keep_prob=0.5):
             qi, ai, ri = datagen.__next__()
             # non-zero elements in each example of ai
@@ -243,12 +249,15 @@ class conditioned_seq2seq(object):
             for j in range(epochs):
                 mean_loss = 0
                 for i in range(n):
-                    _, _, l = self._sess.run([self.train_op, self.train_op_r, self.loss],
+                    _, _, l, pp_value = self._sess.run([self.train_op, self.train_op_r, self.loss, self.perplexity],
                                     feed_dict=fetch_dict(trainset)
                                     )
                     mean_loss += l
-                    sys.stdout.write('[{}/{}]\r'.format(i, n))
+                    #sys.stdout.write('[{}/{}]\r'.format(i, n))
+                    print(pp_value)
                 print('\n>> [{}] train loss at : {}'.format(j, mean_loss / n))
+                # log to file
+                log_handle.write('{} {} {}\n'.format(j, mean_loss/n, 0))
 
                 if j and j%eval_interval == 0:
                     if save:
@@ -261,6 +270,7 @@ class conditioned_seq2seq(object):
                                              feed_dict=fetch_dict(validset, keep_prob=1.)
                                              )
                     print('valid loss : {}'.format(validloss / valid_n))
+                    log_handle.write('{} {} {}\n'.format(j, mean_loss/n, validloss/valid_n))
 
         except KeyboardInterrupt:
             print('\n>> Interrupted by user at iteration {}'.format(j))

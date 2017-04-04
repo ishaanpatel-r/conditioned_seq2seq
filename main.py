@@ -60,7 +60,7 @@ def train(model_fn, data_, metadata, args):
     # create a model
     if model_fn == conditioned_seq2seq:
         model = model_fn(state_size=args['state_size'], vocab_size=vocab_size,
-                                    num_layers=['num_layers'], 
+                                    num_layers=args['num_layers'], 
                                     ext_context_size=ext_context_size,
                                     batch_size=batch_size)
         # train
