@@ -247,30 +247,29 @@ class conditioned_seq2seq(object):
         try:
             # start training
             for j in range(epochs):
-                mean_loss = 0
+                mean_pp = 0
                 for i in range(n):
                     _, _, l, pp_value = self._sess.run([self.train_op, self.train_op_r, self.loss, self.perplexity],
                                     feed_dict=fetch_dict(trainset)
                                     )
-                    mean_loss += l
-                    #sys.stdout.write('[{}/{}]\r'.format(i, n))
-                    print(pp_value)
-                print('\n>> [{}] train loss at : {}'.format(j, mean_loss / n))
+                    mean_pp += pp_value
+                    sys.stdout.write('[{}/{}]\r'.format(i, n))
+                print('\n>> [{}] Training Perplexity at : {}'.format(j, mean_pp / n))
                 # log to file
-                log_handle.write('{} {} {}\n'.format(j, mean_loss/n, 0))
+                log_handle.write('{} {} {}\n'.format(j, mean_pp/n, 0))
 
                 if j and j%eval_interval == 0:
                     if save:
                         saver.save(self._sess, self.ckpt_path + self.model_name + '.ckpt', global_step=j)
                     #
                     # evaluate
-                    validloss = 0
+                    valid_pp = 0
                     for k in range(valid_n):
-                        validloss += self._sess.run(self.loss,
+                        valid_pp += self._sess.run(self.perplexity,
                                              feed_dict=fetch_dict(validset, keep_prob=1.)
                                              )
-                    print('valid loss : {}'.format(validloss / valid_n))
-                    log_handle.write('{} {} {}\n'.format(j, mean_loss/n, validloss/valid_n))
+                    print('valid perplexity : {}'.format(valid_pp / valid_n))
+                    log_handle.write('{} {} {}\n'.format(j, mean_pp/n, valid_pp/valid_n))
 
         except KeyboardInterrupt:
             print('\n>> Interrupted by user at iteration {}'.format(j))
